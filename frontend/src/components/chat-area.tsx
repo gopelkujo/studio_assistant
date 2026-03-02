@@ -10,7 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, Loader2, Wand2, Box, RefreshCcw } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  Wand2,
+  Box,
+  RefreshCcw,
+  MessageSquare,
+  Eye,
+  Bug,
+  Swords,
+  Mail,
+} from "lucide-react";
 
 export function ChatArea() {
   const { activeSessionId, sessions } = useSessionStore();
@@ -128,21 +139,56 @@ export function ChatArea() {
       <div className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-950">
         <div className="max-w-3xl mx-auto">
           {activeSession.messages.length === 0 && (
-            <div className="flex gap-2 mb-3">
-              <Button
-                type="button"
-                onClick={() => insertCommand("/narrative")}
-                className="h-7 text-xs bg-zinc-900/50 border border-border text-zinc-300 hover:bg-zinc-800 hover:text-primary hover:border-primary/50 transition-colors"
-              >
-                <Wand2 className="w-3 h-3 mr-1" /> /narrative
-              </Button>
-              <Button
-                type="button"
-                onClick={() => insertCommand("/asset-brief")}
-                className="h-7 text-xs bg-zinc-900/50 border border-border text-zinc-300 hover:bg-zinc-800 hover:text-primary hover:border-primary/50 transition-colors"
-              >
-                <Box className="w-3 h-3 mr-1" /> /asset-brief
-              </Button>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(
+                [
+                  {
+                    cmd: "/narrative",
+                    icon: <Wand2 className="w-3 h-3 mr-1" />,
+                    label: "/narrative",
+                  },
+                  {
+                    cmd: "/asset-brief",
+                    icon: <Box className="w-3 h-3 mr-1" />,
+                    label: "/asset-brief",
+                  },
+                  {
+                    cmd: "/dialogue",
+                    icon: <MessageSquare className="w-3 h-3 mr-1" />,
+                    label: "/dialogue",
+                  },
+                  {
+                    cmd: "/vibe-check",
+                    icon: <Eye className="w-3 h-3 mr-1" />,
+                    label: "/vibe-check",
+                  },
+                  {
+                    cmd: "/bug-triager",
+                    icon: <Bug className="w-3 h-3 mr-1" />,
+                    label: "/bug-triager",
+                  },
+                  {
+                    cmd: "/quest-logic",
+                    icon: <Swords className="w-3 h-3 mr-1" />,
+                    label: "/quest-logic",
+                  },
+                  {
+                    cmd: "/summarize-email",
+                    icon: <Mail className="w-3 h-3 mr-1" />,
+                    label: "/summarize-email",
+                  },
+                ] as const
+              ).map(({ cmd, icon, label }) => (
+                <Button
+                  key={cmd}
+                  type="button"
+                  onClick={() => insertCommand(cmd)}
+                  className="h-7 text-xs bg-zinc-900/50 border border-border text-zinc-300 hover:bg-zinc-800 hover:text-primary hover:border-primary/50 transition-colors"
+                >
+                  {icon}
+                  {label}
+                </Button>
+              ))}
             </div>
           )}
 

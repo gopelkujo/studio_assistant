@@ -6,6 +6,14 @@ export class GenerateCommandDto {
   prompt: string;
 
   @IsString()
-  @IsIn(['narrative', 'asset-brief'])
-  type: 'narrative' | 'asset-brief';
+  @IsIn([
+    'narrative',
+    'asset-brief',
+    'dialogue',
+    'vibe-check',
+    'bug-triager',
+    'quest-logic',
+    'summarize-email',
+  ])
+  type: string;
 }

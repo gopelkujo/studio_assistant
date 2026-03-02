@@ -31,16 +31,26 @@ export function useChatStream() {
       timestamp: Date.now(),
     });
 
-    // 2. Determine Command Type (Naive Parser)
-    let commandType: "narrative" | "asset-brief" = "narrative";
+    // 2. Determine Command Type
+    let commandType = "narrative"; // Default
     let cleanPrompt = prompt;
 
-    if (prompt.startsWith("/narrative")) {
-      commandType = "narrative";
-      cleanPrompt = prompt.replace("/narrative", "").trim();
-    } else if (prompt.startsWith("/asset-brief")) {
-      commandType = "asset-brief";
-      cleanPrompt = prompt.replace("/asset-brief", "").trim();
+    const COMMANDS = [
+      "/narrative",
+      "/asset-brief",
+      "/dialogue",
+      "/vibe-check",
+      "/bug-triager",
+      "/quest-logic",
+      "/summarize-email",
+    ];
+
+    for (const cmd of COMMANDS) {
+      if (prompt.startsWith(cmd)) {
+        commandType = cmd.slice(1); // strip leading slash
+        cleanPrompt = prompt.slice(cmd.length).trim();
+        break;
+      }
     }
 
     // 3. Update Title dynamically if it's the first message
