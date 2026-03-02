@@ -105,6 +105,22 @@ npm run build
 npm run start
 ```
 
+## 🧪 How to Test End-to-End
+
+Once both servers are running (`npm run dev` and `npm run start:dev`):
+
+1. **Open the UI:** Navigate to `http://localhost:3000` in your web browser.
+2. **Start a Session:** Click **"New Chat"** in the left sidebar.
+3. **Test Narrative Generation:** In the input box, type:
+   > `/narrative A cyberpunk street kid trying to hack into a megacorp's data vault`
+   > Verify that the AI responds with exactly 3 Player Choices formatted in markdown.
+4. **Test Asset Brief Generation:** In the input box, type:
+   > `/asset-brief A highly detailed, sci-fi assault rifle with holographic sights`
+   > Verify that the AI responds with technical bullet points (Silhouette, Poly Budget, Textures).
+5. **Test State Persistence:** Refresh the page. Your active session and message history should reload instantly from local storage.
+
+---
+
 ## 👱‍♂️ Development Time
 
 - Start: 09.55 AM - 02/03/2026
