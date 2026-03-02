@@ -142,6 +142,24 @@ export function ChatSidebar({ onClose, onOpenAbout }: ChatSidebarProps) {
           About &amp; Commands
         </button>
 
+        {/* Session-only notice */}
+        <div className="flex items-start gap-1.5 px-1 py-1.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60">
+          <svg
+            className="w-3 h-3 text-amber-500/70 shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <p className="text-[10px] text-zinc-600 leading-snug">
+            Chats are saved for this tab only and will be cleared when you close
+            it.
+          </p>
+        </div>
+
         {/* Social links */}
         <div className="flex items-center justify-between px-1">
           <p className="text-[10px] text-zinc-700">Powered by GPT-4o</p>
