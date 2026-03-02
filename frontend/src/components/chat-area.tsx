@@ -21,15 +21,58 @@ import {
   Bug,
   Swords,
   Mail,
+  Sparkles,
 } from "lucide-react";
+
+const COMMANDS = [
+  {
+    cmd: "/narrative",
+    icon: Wand2,
+    label: "/narrative",
+    desc: "Branching story",
+  },
+  {
+    cmd: "/asset-brief",
+    icon: Box,
+    label: "/asset-brief",
+    desc: "Art direction",
+  },
+  {
+    cmd: "/dialogue",
+    icon: MessageSquare,
+    label: "/dialogue",
+    desc: "Character lines",
+  },
+  { cmd: "/vibe-check", icon: Eye, label: "/vibe-check", desc: "Visual mood" },
+  {
+    cmd: "/bug-triager",
+    icon: Bug,
+    label: "/bug-triager",
+    desc: "Jira ticket",
+  },
+  {
+    cmd: "/quest-logic",
+    icon: Swords,
+    label: "/quest-logic",
+    desc: "Quest flow",
+  },
+  {
+    cmd: "/summarize-email",
+    icon: Mail,
+    label: "/summarize-email",
+    desc: "Studio email",
+  },
+] as const;
 
 export function ChatArea() {
   const { activeSessionId, sessions } = useSessionStore();
   const { sendMessage, retryLastMessage, isGenerating, error } =
     useChatStream();
   const [input, setInput] = useState("");
+  const [isMultiline, setIsMultiline] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const activeSession = activeSessionId ? sessions[activeSessionId] : null;
 
@@ -39,69 +82,160 @@ export function ChatArea() {
     }
   }, [activeSession?.messages, isGenerating]);
 
+  // Auto-resize textarea: grow up to 5 lines, then scroll
+  // Also track if content exceeds 2 lines to align the send button
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto"; // reset before measuring
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+    const paddingY =
+      parseFloat(getComputedStyle(el).paddingTop) +
+      parseFloat(getComputedStyle(el).paddingBottom);
+    const maxHeight = lineHeight * 5 + paddingY;
+    el.style.height = Math.min(el.scrollHeight, maxHeight) + "px";
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+    // Switch send button alignment: center for ≤2 lines, bottom for >2
+    const lineCount = Math.round((el.scrollHeight - paddingY) / lineHeight);
+    setIsMultiline(lineCount > 2);
+  }, [input]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isGenerating) return;
     sendMessage(input);
     setInput("");
+    textareaRef.current?.focus();
   };
 
   const insertCommand = (cmd: string) => {
     setInput(cmd + " ");
+    textareaRef.current?.focus();
   };
 
   if (!activeSession) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-background text-zinc-400 h-full w-full">
-        <Wand2 className="w-12 h-12 mb-4 text-primary/50" />
-        <h2 className="text-xl font-medium mb-2 text-primary shadow-primary">
-          Welcome to Studio Assistant
+      <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 text-zinc-400 h-full w-full px-6 py-12">
+        {/* Welcome glow orb */}
+        <div className="relative mb-8">
+          <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/30 shadow-[0_0_60px_rgba(168,85,247,0.3)]">
+            <Sparkles className="w-9 h-9 text-primary" />
+          </div>
+          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary animate-pulse" />
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-bold mb-3 text-zinc-100 text-center tracking-tight">
+          Welcome to{" "}
+          <span className="text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.7)]">
+            Studio Assistant
+          </span>
         </h2>
-        <p>Select or create a new active session to begin writing commands.</p>
+        <p className="text-zinc-500 text-sm sm:text-base text-center max-w-xs leading-relaxed mb-8">
+          Your AI-powered co-pilot for game development. Create a new chat to
+          start generating.
+        </p>
+
+        {/* Command previews in welcome state */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-w-lg w-full">
+          {COMMANDS.map(({ cmd, icon: Icon, label, desc }) => (
+            <div
+              key={cmd}
+              className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 py-2.5 flex flex-col gap-1 hover:border-primary/40 hover:bg-zinc-900 transition-colors cursor-default"
+            >
+              <Icon className="w-4 h-4 text-primary/70" />
+              <span className="text-[11px] font-mono text-primary/80 leading-none">
+                {label}
+              </span>
+              <span className="text-[10px] text-zinc-600 leading-none">
+                {desc}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-zinc-700 mt-8">
+          ← Select or create a chat to begin
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden relative">
-      {/* Header */}
-      <div className="shrink-0 h-14 border-b border-zinc-800 flex items-center px-6">
-        <h1 className="font-medium text-zinc-200">{activeSession.title}</h1>
+    <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden">
+      {/* Chat header */}
+      <div className="shrink-0 h-14 border-b border-zinc-800/80 flex items-center px-4 sm:px-6 bg-zinc-950/80 backdrop-blur-sm">
+        <div className="min-w-0">
+          <h1 className="font-semibold text-zinc-200 text-sm sm:text-base truncate">
+            {activeSession.title}
+          </h1>
+          <p className="text-[10px] text-zinc-600 leading-none mt-0.5">
+            {activeSession.messages.length} message
+            {activeSession.messages.length !== 1 ? "s" : ""}
+          </p>
+        </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-6 bg-zinc-950/50">
-        <div className="max-w-3xl mx-auto space-y-6 pb-6 pt-2">
+      {/* Messages area */}
+      <ScrollArea className="flex-1 overflow-hidden">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6 pb-4">
           <AnimatePresence initial={false}>
-            {activeSession.messages.map((msg) => (
+            {activeSession.messages.map((msg, index) => (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                initial={{ opacity: 0, y: 18, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                className={`flex gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                transition={{
+                  duration: 0.32,
+                  ease: [0.23, 1, 0.32, 1],
+                  delay: index === activeSession.messages.length - 1 ? 0 : 0,
+                }}
+                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" && (
-                  <Avatar className="w-8 h-8 rounded shrink-0 bg-primary ring-1 ring-primary/50 shadow-[0_0_10px_rgba(255,0,255,0.4)]">
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-[10px] rounded">
+                  <Avatar className="w-8 h-8 rounded-lg shrink-0 mt-0.5">
+                    <AvatarFallback className="bg-primary/20 text-primary font-bold text-[10px] rounded-lg border border-primary/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]">
                       SA
                     </AvatarFallback>
                   </Avatar>
                 )}
+
                 <div
-                  className={`rounded-xl px-4 py-3 max-w-[85%] ${msg.role === "user" ? "bg-zinc-800/80 text-zinc-100 border border-zinc-700/50" : "bg-card text-card-foreground border border-border prose prose-invert prose-p:leading-relaxed prose-headings:text-primary prose-a:text-primary"}`}
+                  className={`rounded-2xl px-4 py-3 max-w-[85%] sm:max-w-[80%] text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-zinc-800 text-zinc-100 border border-zinc-700/50 rounded-tr-sm"
+                      : "bg-zinc-900/80 text-zinc-200 border border-zinc-800/60 rounded-tl-sm prose prose-invert prose-sm prose-p:leading-relaxed prose-headings:text-primary prose-headings:font-semibold prose-a:text-primary prose-code:text-primary/80 prose-code:bg-zinc-800 prose-code:px-1 prose-code:rounded"
+                  }`}
                 >
                   {msg.role === "assistant" && !msg.content && isGenerating ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                    <div className="flex items-center gap-2 py-0.5">
+                      <div className="flex gap-1">
+                        <span
+                          className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
+                          style={{ animationDelay: "0ms" }}
+                        />
+                        <span
+                          className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
+                          style={{ animationDelay: "150ms" }}
+                        />
+                        <span
+                          className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
+                          style={{ animationDelay: "300ms" }}
+                        />
+                      </div>
+                      <span className="text-xs text-zinc-500">
+                        Generating...
+                      </span>
+                    </div>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {msg.content}
                     </ReactMarkdown>
                   )}
                 </div>
+
                 {msg.role === "user" && (
-                  <Avatar className="w-8 h-8 shrink-0 bg-zinc-800 ring-1 ring-zinc-700">
-                    <AvatarFallback className="bg-zinc-800 text-zinc-300 font-medium text-xs">
+                  <Avatar className="w-8 h-8 shrink-0 mt-0.5">
+                    <AvatarFallback className="bg-zinc-700 text-zinc-300 font-semibold text-xs rounded-lg">
                       U
                     </AvatarFallback>
                   </Avatar>
@@ -109,94 +243,64 @@ export function ChatArea() {
               </motion.div>
             ))}
           </AnimatePresence>
+
+          {/* Error block */}
           {error && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center justify-between text-destructive bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-sm max-w-[85%] mr-auto ml-14"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-destructive bg-destructive/10 border border-destructive/25 p-4 rounded-2xl text-sm ml-11"
             >
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold">Generation Interrupted</span>
-                <span className="text-destructive/80 text-xs">
-                  The AI was unable to complete this request. ({error})
+              <div className="flex flex-col gap-0.5">
+                <span className="font-semibold text-sm">
+                  Generation Interrupted
+                </span>
+                <span className="text-destructive/70 text-xs">
+                  The AI was unable to complete this request. {error}
                 </span>
               </div>
               <Button
                 onClick={() => retryLastMessage()}
                 disabled={isGenerating}
-                className="bg-destructive text-white hover:bg-destructive/90 border-0 ml-4 h-8 px-4 font-medium transition-colors"
+                className="bg-destructive text-white hover:bg-destructive/80 border-0 h-8 px-4 text-xs font-semibold shrink-0 transition-colors"
               >
-                <RefreshCcw className="w-3.5 h-3.5 mr-2" />
-                Retry Prompt
+                <RefreshCcw className="w-3.5 h-3.5 mr-1.5" />
+                Retry
               </Button>
             </motion.div>
           )}
+
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
 
-      {/* Input Area */}
-      <div className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-950">
-        <div className="max-w-3xl mx-auto">
+      {/* Input area */}
+      <div className="shrink-0 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur-sm p-3 sm:p-4">
+        <div className="max-w-3xl mx-auto space-y-2.5">
+          {/* Command pills — only on empty chat */}
           {activeSession.messages.length === 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {(
-                [
-                  {
-                    cmd: "/narrative",
-                    icon: <Wand2 className="w-3 h-3 mr-1" />,
-                    label: "/narrative",
-                  },
-                  {
-                    cmd: "/asset-brief",
-                    icon: <Box className="w-3 h-3 mr-1" />,
-                    label: "/asset-brief",
-                  },
-                  {
-                    cmd: "/dialogue",
-                    icon: <MessageSquare className="w-3 h-3 mr-1" />,
-                    label: "/dialogue",
-                  },
-                  {
-                    cmd: "/vibe-check",
-                    icon: <Eye className="w-3 h-3 mr-1" />,
-                    label: "/vibe-check",
-                  },
-                  {
-                    cmd: "/bug-triager",
-                    icon: <Bug className="w-3 h-3 mr-1" />,
-                    label: "/bug-triager",
-                  },
-                  {
-                    cmd: "/quest-logic",
-                    icon: <Swords className="w-3 h-3 mr-1" />,
-                    label: "/quest-logic",
-                  },
-                  {
-                    cmd: "/summarize-email",
-                    icon: <Mail className="w-3 h-3 mr-1" />,
-                    label: "/summarize-email",
-                  },
-                ] as const
-              ).map(({ cmd, icon, label }) => (
-                <Button
+            <div className="flex flex-wrap gap-1.5">
+              {COMMANDS.map(({ cmd, icon: Icon, label }) => (
+                <button
                   key={cmd}
                   type="button"
                   onClick={() => insertCommand(cmd)}
-                  className="h-7 text-xs bg-zinc-900/50 border border-border text-zinc-300 hover:bg-zinc-800 hover:text-primary hover:border-primary/50 transition-colors"
+                  className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-mono bg-zinc-900 border border-zinc-700/60 text-zinc-400 rounded-full hover:bg-zinc-800 hover:text-primary hover:border-primary/40 transition-all duration-150 group"
                 >
-                  {icon}
+                  <Icon className="w-3 h-3 group-hover:text-primary transition-colors" />
                   {label}
-                </Button>
+                </button>
               ))}
             </div>
           )}
 
+          {/* Textarea + send */}
           <form
             onSubmit={handleSubmit}
-            className="relative flex items-end gap-2 bg-zinc-900/80 border border-primary/20 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all p-2 shadow-inner"
+            className={`relative flex gap-2 bg-zinc-900 border border-zinc-700/60 rounded-2xl overflow-hidden focus-within:ring-1 focus-within:ring-primary/60 focus-within:border-primary/50 transition-all duration-200 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] ${isMultiline ? "items-end" : "items-center"}`}
           >
             <Textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -205,14 +309,18 @@ export function ChatArea() {
                   handleSubmit(e);
                 }
               }}
-              placeholder="Type your prompt here... Type / for specialized commands"
-              className="resize-none border-0 bg-transparent focus-visible:ring-0 min-h-[44px] max-h-48 text-zinc-100 placeholder:text-zinc-500 py-3"
+              placeholder="Type a prompt or click a command above… (Shift+Enter for newline)"
+              className="resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:outline-none min-h-[40px] text-zinc-100 placeholder:text-zinc-600 text-sm py-0.5 leading-relaxed flex-1 transition-[height] duration-100"
               disabled={isGenerating}
             />
             <Button
               type="submit"
               disabled={!input.trim() || isGenerating}
-              className={`h-10 w-10 shrink-0 rounded-lg p-0 flex items-center justify-center transition-colors ${input.trim() && !isGenerating ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(255,0,255,0.3)]" : "bg-zinc-800 text-zinc-500 hover:bg-zinc-800"}`}
+              className={`h-9 w-9 shrink-0 rounded-xl p-0 flex items-center justify-center transition-all duration-200 ${
+                input.trim() && !isGenerating
+                  ? "bg-primary text-primary-foreground hover:bg-primary/80 shadow-[0_0_16px_rgba(168,85,247,0.4)]"
+                  : "bg-zinc-800 text-zinc-600"
+              }`}
             >
               {isGenerating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -221,12 +329,10 @@ export function ChatArea() {
               )}
             </Button>
           </form>
-          <div className="text-center mt-2">
-            <span className="text-[10px] text-zinc-600">
-              AI outputs may not be accurate. Verify narrative lore before
-              production.
-            </span>
-          </div>
+
+          <p className="text-center text-[10px] text-zinc-700">
+            AI outputs may be inaccurate. Verify before production use.
+          </p>
         </div>
       </div>
     </div>
