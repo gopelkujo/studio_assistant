@@ -1,35 +1,57 @@
 # Studio Assistant - Backend Architecture
 
-This is the API server for **Studio Assistant**, built with [NestJS](https://nestjs.com/). It handles routing, parameter validation, rate-limit error mapping, and streams intelligent responses from OpenAI to the client via Server-Sent Events (SSE).
+This is the API server for **Studio Assistant**, built with [NestJS](https://nestjs.com/). It handles routing, request validation, and streams intelligent responses from OpenAI to the client via Server-Sent Events (SSE).
 
 ## 🧠 Technical Overview for Developers
 
 ### 1. Server-Sent Events (SSE) Interface
 
-Because AI responses can take a while to generate, we do not wait for the entire response to assemble.
+AI responses stream token-by-token rather than waiting for the full response.
 
 - The `/ai/generate` endpoint (in `AiController`) is decorated with `@Sse()`.
-- It returns an `Observable` pipeline instead of a standard JSON Promise.
-- The `AiService` streams tokens directly from the OpenAI API as they arrive and yields them to the client chunk-by-chunk.
+- It returns an `Observable` pipeline instead of a standard JSON promise.
+- `AiService` streams tokens directly from the OpenAI API and yields each chunk to the client as it arrives.
+- A `/health` endpoint is also available for production health checks.
 
-### 2. Prompt Engineering & Domain Roles
+### 2. Command Map & AI Personas
 
-The backend enforces strict AI constraints before sending prompts to the OpenAI model.
+All prompt engineering lives in a single `COMMAND_PROMPTS` record object at the top of `AiService`. Each key is a command slug; the value is the full system prompt for that AI persona.
 
-- See `AiService.getNarrativePrompt()` and `AiService.getAssetBriefPrompt()`.
-- The user is not allowed to set their own system instructions. Instead, they provide a simple prompt and pass a `commandType` (`narrative` or `asset-brief`), and the backend wraps their query inside our highly-engineered system personas.
+```typescript
+const COMMAND_PROMPTS: Record<string, string> = {
+  narrative: '...', // Lead Narrative Designer
+  'asset-brief': '...', // Lead Art Director
+  dialogue: '...', // Character Dialogue Writer
+  'vibe-check': '...', // Visual Mood Brief
+  'bug-triager': '...', // Senior QA Lead
+  'quest-logic': '...', // Systems Designer
+  'summarize-email': '...', // Studio Producer
+};
+```
+
+To add a new command, insert one key into `COMMAND_PROMPTS` and add it to the `@IsIn([...])` validator in `GenerateCommandDto`. No other changes required.
+
+The service resolves the prompt with:
+
+```typescript
+const systemPrompt = COMMAND_PROMPTS[dto.type] ?? COMMAND_PROMPTS['narrative'];
+```
 
 ### 3. DTOs & Request Validation
 
-- All inbound JSON payloads to the AI route go through the `GenerateCommandDto`.
-- The `class-validator` package ensures the `type` parameter only strictly matches `'narrative'` or `'asset-brief'` before processing.
+All inbound payloads go through `GenerateCommandDto` (`src/ai/dto/generate-command.dto.ts`).
+
+- `prompt` — the user's raw input text (`@IsString`, `@IsNotEmpty`)
+- `type` — one of 7 validated command slugs (`@IsIn([...])`)
+
+If `type` is not in the allowed list, the request is rejected with a 400 before it reaches the service.
 
 ### 4. Global Error Handling
 
-Because the NestJS server is streaming data in real-time, handling errors is slightly different:
+Because the server streams in real-time, error handling has two modes:
 
-- If an HTTP 500 or 429 (Rate Limit) occurs _before_ headers are sent, `GlobalExceptionFilter` returns a standard JSON error block.
-- If an exception occurs _mid-stream_ (e.g. the OpenAI API fails halfway through generating text), the filter returns an `event: error` SSE chunk to proactively tell the frontend the stream died, rather than leaving the client hanging.
+- **Before headers are sent** — `GlobalExceptionFilter` returns a standard JSON error block.
+- **Mid-stream** — the filter emits an `event: error` SSE chunk to tell the frontend the stream died, preventing the client from hanging indefinitely.
 
 ---
 
@@ -42,11 +64,18 @@ npm install
 # Run development server with Hot Module Reloading
 npm run start:dev
 
-# Run unit tests
-npm run test
-
 # Build for production
 npm run build
+
+# Run production build
+npm run start:prod
+
+# Run unit tests
+npm run test
 ```
 
-**Note**: You must have a `.env` file present at the root of `backend/` with a valid `OPENAI_API_KEY` for the application to function.
+**Note**: You must have a `.env` file at the root of `backend/` with a valid `OPENAI_API_KEY`. Copy `.env.example` to get started:
+
+```bash
+cp .env.example .env
+```
