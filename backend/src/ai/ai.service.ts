@@ -204,6 +204,8 @@ export class AiService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: dto.prompt },
         ],
+        temperature: dto.temperature ?? 0.7,
+        max_tokens: dto.maxTokens ?? 1500,
         stream: true,
       });
 

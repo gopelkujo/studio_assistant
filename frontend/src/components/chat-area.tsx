@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useSessionStore } from "@/store/sessionStore";
 import { useChatStream } from "@/hooks/useChatStream";
 import ReactMarkdown from "react-markdown";
@@ -27,6 +27,7 @@ import {
   FileDown,
 } from "lucide-react";
 import { exportSessionToPDF } from "@/lib/exportToPDF";
+import { ModelSettingsPanel } from "@/components/model-settings-panel";
 
 const COMMANDS = [
   {
@@ -152,12 +153,12 @@ export function ChatArea() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.messages]);
 
-  // Auto-resize textarea: grow up to 5 lines, then scroll
-  // Also track if content exceeds 2 lines to align the send button
-  useEffect(() => {
+  // Auto-resize textarea: grow up to 5 lines, then scroll.
+  // Called directly from onChange — avoids a second render per keystroke.
+  const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
-    el.style.height = "auto"; // reset before measuring
+    el.style.height = "auto";
     const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
     const paddingY =
       parseFloat(getComputedStyle(el).paddingTop) +
@@ -165,25 +166,37 @@ export function ChatArea() {
     const maxHeight = lineHeight * 5 + paddingY;
     el.style.height = Math.min(el.scrollHeight, maxHeight) + "px";
     el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
-    // Switch send button alignment: center for ≤2 lines, bottom for >2
     const lineCount = Math.round((el.scrollHeight - paddingY) / lineHeight);
     setIsMultiline(lineCount > 2);
-  }, [input]);
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isGenerating) return;
-    sendMessage(input);
-    setInput("");
-    textareaRef.current?.focus();
-  };
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!input.trim() || isGenerating) return;
+      sendMessage(input);
+      setInput("");
+      // Reset textarea height immediately after clearing
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+      setIsMultiline(false);
+      textareaRef.current?.focus();
+    },
+    [input, isGenerating, sendMessage],
+  );
 
-  const insertCommand = (cmd: string) => {
-    setInput(cmd + " ");
-    textareaRef.current?.focus();
-  };
+  const insertCommand = useCallback(
+    (cmd: string) => {
+      setInput(cmd + " ");
+      textareaRef.current?.focus();
+      // Resize after state update settles
+      setTimeout(() => resizeTextarea(), 0);
+    },
+    [resizeTextarea],
+  );
 
-  const handleCopy = (id: string, text: string) => {
+  const handleCopy = useCallback((id: string, text: string) => {
     if (!text) return;
     const plain = stripMarkdown(text);
     navigator.clipboard.writeText(plain).then(() => {
@@ -192,7 +205,7 @@ export function ChatArea() {
         setCopiedMap((prev) => ({ ...prev, [id]: false }));
       }, 2000);
     });
-  };
+  }, []);
 
   if (!activeSession) {
     return (
@@ -453,12 +466,15 @@ export function ChatArea() {
           {/* Textarea + send */}
           <form
             onSubmit={handleSubmit}
-            className={`relative flex gap-2 bg-zinc-900 border border-zinc-700/60 rounded-2xl overflow-hidden focus-within:ring-1 focus-within:ring-primary/60 focus-within:border-primary/50 transition-all duration-200 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] ${isMultiline ? "items-end" : "items-center"}`}
+            className={`relative flex gap-2 bg-zinc-900 border border-zinc-700/60 rounded-2xl focus-within:ring-1 focus-within:ring-primary/60 focus-within:border-primary/50 transition-all duration-200 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] ${isMultiline ? "items-end" : "items-center"}`}
           >
             <Textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                resizeTextarea();
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -469,6 +485,7 @@ export function ChatArea() {
               className="resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:outline-none min-h-[40px] text-zinc-100 placeholder:text-zinc-600 text-sm py-0.5 leading-relaxed flex-1 transition-[height] duration-100"
               disabled={isGenerating}
             />
+            <ModelSettingsPanel />
             <Button
               type="submit"
               disabled={!input.trim() || isGenerating}

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useSessionStore } from "../store/sessionStore";
+import { useModelSettings } from "../store/modelSettingsStore";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 export function useChatStream() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { temperature, maxTokens } = useModelSettings();
 
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const activeSession = useSessionStore((state) =>
@@ -88,6 +90,8 @@ export function useChatStream() {
         body: JSON.stringify({
           prompt: cleanPrompt,
           type: commandType,
+          temperature,
+          maxTokens,
         }),
         onopen(res) {
           if (res.ok && res.status === 200) {
