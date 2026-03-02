@@ -66,7 +66,7 @@ _The frontend application will be available at `http://localhost:3000`._
 
 - **Standalone Architecture**: Separated the code into independent `/frontend` and `/backend` directories instead of a complex NPM Workspace monorepo to ensure a much simpler deployment process and cleaner separation of concerns.
 - **Server-Sent Events (SSE)**: Implemented SSE in NestJS instead of WebSockets or REST. This allows the AI responses to stream token-by-token directly to the client, providing a fast, real-time typing effect without the heavy overhead of bidirectional websockets.
-- **Client-Side State**: Selected Zustand for state management due to its minimal boilerplate. Chat sessions and history are persisted locally in the browser's `localStorage` to avoid requiring a complex database setup for MVP testing.
+- **Client-Side State**: Selected Zustand for state management due to its minimal boilerplate. Chat sessions, history, and model generation settings (Temperature, Max Tokens) are persisted locally in the browser's `localStorage` to avoid requiring a complex database setup for MVP testing.
 - **Custom Theming**: Designed a high-contrast Cyberpunk/Industrial color palette with neon accents and `framer-motion` micro-animations. This shifts the aesthetic away from generic SaaS tools and aligns it closely with the intended Game Studio target audience.
 
 # 8. What I Would Improve

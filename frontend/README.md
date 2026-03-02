@@ -23,7 +23,7 @@ The UI is built on [Shadcn UI](https://ui.shadcn.com/) and Radix UI primitives, 
 
 ### 3. State & Session Management (Zustand)
 
-All sessions are persisted locally in `localStorage` using `zustand/middleware`. See `src/store/sessionStore.ts`.
+All sessions and model settings are persisted locally in `localStorage` using `zustand/middleware`. See `src/store/sessionStore.ts` and `src/store/modelSettingsStore.ts`.
 
 Each `Message` in the store has:
 
@@ -40,8 +40,10 @@ The store exposes:
 Browser-native `EventSource` doesn't support `POST` or custom headers, so we use `@microsoft/fetch-event-source`.
 
 - Parses 7 slash commands (`/narrative`, `/asset-brief`, `/dialogue`, `/vibe-check`, `/bug-triager`, `/quest-logic`, `/summarize-email`) from the prompt before sending
-- Extracts the `commandType` and `cleanPrompt`, then POSTs to `/ai/generate`
+- Pulls active generation settings (`temperature`, `maxTokens`) from the `modelSettingsStore`
+- Extracts the `commandType` and `cleanPrompt`, then POSTs all data to `/ai/generate`
 - Calls `updateMessageContent` on each chunk and `finalizeMessage` on stream close/error
+- Exposes a `retryLastMessage` function to easily re-submit the last user prompt upon generation failure or manual retry
 
 ### 5. Streaming Text Animation
 

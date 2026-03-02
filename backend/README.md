@@ -43,8 +43,10 @@ All inbound payloads go through `GenerateCommandDto` (`src/ai/dto/generate-comma
 
 - `prompt` — the user's raw input text (`@IsString`, `@IsNotEmpty`)
 - `type` — one of 7 validated command slugs (`@IsIn([...])`)
+- `temperature` — (Optional) Sampling temperature between 0.0 and 2.0 (`@IsNumber`, `@Min(0)`, `@Max(2)`)
+- `maxTokens` — (Optional) Maximum tokens in the response between 256 and 4096 (`@IsNumber`, `@Min(256)`, `@Max(4096)`)
 
-If `type` is not in the allowed list, the request is rejected with a 400 before it reaches the service.
+If `type` is not in the allowed list, or if the number boundaries are exceeded, the request is rejected with a 400 before it reaches the service.
 
 ### 4. Global Error Handling
 
