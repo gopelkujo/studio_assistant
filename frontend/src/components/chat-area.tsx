@@ -336,22 +336,20 @@ export function ChatArea() {
       {/* Input area */}
       <div className="shrink-0 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur-sm p-3 sm:p-4">
         <div className="max-w-3xl mx-auto space-y-2.5">
-          {/* Command pills — only on empty chat */}
-          {activeSession.messages.length === 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {COMMANDS.map(({ cmd, icon: Icon, label }) => (
-                <button
-                  key={cmd}
-                  type="button"
-                  onClick={() => insertCommand(cmd)}
-                  className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-mono bg-zinc-900 border border-zinc-700/60 text-zinc-400 rounded-full hover:bg-zinc-800 hover:text-primary hover:border-primary/40 transition-all duration-150 group"
-                >
-                  <Icon className="w-3 h-3 group-hover:text-primary transition-colors" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Command pills — always visible */}
+          <div className="flex flex-wrap gap-1.5">
+            {COMMANDS.map(({ cmd, icon: Icon, label }) => (
+              <button
+                key={cmd}
+                type="button"
+                onClick={() => insertCommand(cmd)}
+                className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-mono bg-zinc-900 border border-zinc-700/60 text-zinc-400 rounded-full hover:bg-zinc-800 hover:text-primary hover:border-primary/40 transition-all duration-150 group"
+              >
+                <Icon className="w-3 h-3 group-hover:text-primary transition-colors" />
+                {label}
+              </button>
+            ))}
+          </div>
 
           {/* Textarea + send */}
           <form

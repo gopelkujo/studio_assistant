@@ -2,10 +2,12 @@
 import { useState } from "react";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { ChatArea } from "@/components/chat-area";
-import { Menu, X } from "lucide-react";
+import { AboutModal } from "@/components/about-modal";
+import { Menu } from "lucide-react";
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   return (
     <main className="flex h-screen w-full overflow-hidden bg-zinc-950">
@@ -17,7 +19,7 @@ export default function Home() {
         />
       )}
 
-      {/* Sidebar — hidden on mobile unless toggled, always visible on md+ */}
+      {/* Sidebar */}
       <div
         className={`
           fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-in-out
@@ -25,7 +27,13 @@ export default function Home() {
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        <ChatSidebar onClose={() => setSidebarOpen(false)} />
+        <ChatSidebar
+          onClose={() => setSidebarOpen(false)}
+          onOpenAbout={() => {
+            setAboutOpen(true);
+            setSidebarOpen(false);
+          }}
+        />
       </div>
 
       {/* Main chat area */}
@@ -47,11 +55,14 @@ export default function Home() {
               Studio Assistant
             </span>
           </div>
-          <div className="w-7" /> {/* Spacer to balance the menu button */}
+          <div className="w-7" />
         </div>
 
         <ChatArea />
       </div>
+
+      {/* About modal — rendered at root level so it overlays everything */}
+      <AboutModal isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
     </main>
   );
 }

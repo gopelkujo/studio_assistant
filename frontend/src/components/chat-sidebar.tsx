@@ -3,13 +3,22 @@ import * as React from "react";
 import { useSessionStore } from "@/store/sessionStore";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, MessageSquare, Trash2, X } from "lucide-react";
+import {
+  PlusCircle,
+  MessageSquare,
+  Trash2,
+  X,
+  Info,
+  Github,
+  Linkedin,
+} from "lucide-react";
 
 interface ChatSidebarProps {
   onClose?: () => void;
+  onOpenAbout?: () => void;
 }
 
-export function ChatSidebar({ onClose }: ChatSidebarProps) {
+export function ChatSidebar({ onClose, onOpenAbout }: ChatSidebarProps) {
   const {
     sessions,
     activeSessionId,
@@ -123,10 +132,40 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t border-zinc-800/70 px-4 py-3">
-        <p className="text-[10px] text-zinc-700 text-center">
-          Powered by OpenAI GPT-4o
-        </p>
+      <div className="border-t border-zinc-800/70 px-3 py-3 space-y-2">
+        {/* About button */}
+        <button
+          onClick={onOpenAbout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/60 transition-all duration-150 text-xs"
+        >
+          <Info className="w-3.5 h-3.5 shrink-0" />
+          About &amp; Commands
+        </button>
+
+        {/* Social links */}
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[10px] text-zinc-700">Powered by GPT-4o</p>
+          <div className="flex items-center gap-1">
+            <a
+              href="https://github.com/gopelkujo/studio_assistant/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+              aria-label="GitHub repository"
+            >
+              <Github className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href="https://www.linkedin.com/in/gopel-kujo/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg text-zinc-600 hover:text-blue-400 hover:bg-zinc-800 transition-all"
+              aria-label="LinkedIn profile"
+            >
+              <Linkedin className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );
