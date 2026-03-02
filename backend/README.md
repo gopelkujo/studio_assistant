@@ -1,98 +1,52 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Studio Assistant - Backend Architecture
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This is the API server for **Studio Assistant**, built with [NestJS](https://nestjs.com/). It handles routing, parameter validation, rate-limit error mapping, and streams intelligent responses from OpenAI to the client via Server-Sent Events (SSE).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🧠 Technical Overview for Developers
 
-## Description
+### 1. Server-Sent Events (SSE) Interface
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Because AI responses can take a while to generate, we do not wait for the entire response to assemble.
 
-## Project setup
+- The `/ai/generate` endpoint (in `AiController`) is decorated with `@Sse()`.
+- It returns an `Observable` pipeline instead of a standard JSON Promise.
+- The `AiService` streams tokens directly from the OpenAI API as they arrive and yields them to the client chunk-by-chunk.
 
-```bash
-$ npm install
-```
+### 2. Prompt Engineering & Domain Roles
 
-## Compile and run the project
+The backend enforces strict AI constraints before sending prompts to the OpenAI model.
 
-```bash
-# development
-$ npm run start
+- See `AiService.getNarrativePrompt()` and `AiService.getAssetBriefPrompt()`.
+- The user is not allowed to set their own system instructions. Instead, they provide a simple prompt and pass a `commandType` (`narrative` or `asset-brief`), and the backend wraps their query inside our highly-engineered system personas.
 
-# watch mode
-$ npm run start:dev
+### 3. DTOs & Request Validation
 
-# production mode
-$ npm run start:prod
-```
+- All inbound JSON payloads to the AI route go through the `GenerateCommandDto`.
+- The `class-validator` package ensures the `type` parameter only strictly matches `'narrative'` or `'asset-brief'` before processing.
 
-## Run tests
+### 4. Global Error Handling
+
+Because the NestJS server is streaming data in real-time, handling errors is slightly different:
+
+- If an HTTP 500 or 429 (Rate Limit) occurs _before_ headers are sent, `GlobalExceptionFilter` returns a standard JSON error block.
+- If an exception occurs _mid-stream_ (e.g. the OpenAI API fails halfway through generating text), the filter returns an `event: error` SSE chunk to proactively tell the frontend the stream died, rather than leaving the client hanging.
+
+---
+
+## 💻 Developer Commands
 
 ```bash
-# unit tests
-$ npm run test
+# Install dependencies
+npm install
 
-# e2e tests
-$ npm run test:e2e
+# Run development server with Hot Module Reloading
+npm run start:dev
 
-# test coverage
-$ npm run test:cov
+# Run unit tests
+npm run test
+
+# Build for production
+npm run build
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Note**: You must have a `.env` file present at the root of `backend/` with a valid `OPENAI_API_KEY` for the application to function.
