@@ -62,8 +62,13 @@ export function useChatStream() {
     });
 
     // 5. Connect via SSE
+    const isProduction = process.env.NODE_ENV === "production";
+    const baseUrl = isProduction
+      ? "https://studioassistant.netlify.app"
+      : "http://localhost:3001";
+
     try {
-      await fetchEventSource("http://localhost:3001/ai/generate", {
+      await fetchEventSource(`${baseUrl}/ai/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
