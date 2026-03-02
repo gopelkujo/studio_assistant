@@ -5,6 +5,7 @@ export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  streamChunks?: string[]; // populated during streaming, cleared on done
   timestamp: number;
 }
 
@@ -26,6 +27,7 @@ interface SessionState {
     messageId: string,
     chunk: string,
   ) => void;
+  finalizeMessage: (sessionId: string, messageId: string) => void;
   setSessionTitle: (id: string, title: string) => void;
   deleteSession: (id: string) => void;
 }
@@ -84,7 +86,11 @@ export const useSessionStore = create<SessionState>()(
 
           const updatedMessages = session.messages.map((msg) => {
             if (msg.id === messageId) {
-              return { ...msg, content: msg.content + chunk };
+              return {
+                ...msg,
+                content: msg.content + chunk,
+                streamChunks: [...(msg.streamChunks ?? []), chunk],
+              };
             }
             return msg;
           });
@@ -97,6 +103,27 @@ export const useSessionStore = create<SessionState>()(
                 messages: updatedMessages,
                 updatedAt: Date.now(),
               },
+            },
+          };
+        }),
+
+      // Call when streaming is done: clears chunks so render falls back to ReactMarkdown
+      finalizeMessage: (sessionId, messageId) =>
+        set((state) => {
+          const session = state.sessions[sessionId];
+          if (!session) return state;
+
+          const updatedMessages = session.messages.map((msg) => {
+            if (msg.id === messageId) {
+              return { ...msg, streamChunks: undefined };
+            }
+            return msg;
+          });
+
+          return {
+            sessions: {
+              ...state.sessions,
+              [sessionId]: { ...session, messages: updatedMessages },
             },
           };
         }),

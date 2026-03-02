@@ -14,6 +14,7 @@ export function useChatStream() {
   const updateMessageContent = useSessionStore(
     (state) => state.updateMessageContent,
   );
+  const finalizeMessage = useSessionStore((state) => state.finalizeMessage);
   const setSessionTitle = useSessionStore((state) => state.setSessionTitle);
 
   const sendMessage = async (prompt: string) => {
@@ -131,10 +132,12 @@ export function useChatStream() {
           }
         },
         onclose() {
+          finalizeMessage(activeSessionId, assistantMessageId);
           setIsGenerating(false);
         },
         onerror(err) {
           console.error("SSE connection error:", err);
+          finalizeMessage(activeSessionId, assistantMessageId);
           setError(err.message || "Failed to connect to AI server");
           setIsGenerating(false);
           throw err; // Stop retrying on critical failure

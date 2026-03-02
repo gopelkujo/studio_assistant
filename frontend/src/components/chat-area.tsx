@@ -71,16 +71,55 @@ export function ChatArea() {
   const [input, setInput] = useState("");
   const [isMultiline, setIsMultiline] = useState(false);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
+  const scrollWrapperRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Track whether user is near the bottom (within 80px)
+  const isAtBottomRef = useRef(true);
+  // Track message count to detect new-message starts vs streaming updates
+  const prevMsgCountRef = useRef(0);
 
   const activeSession = activeSessionId ? sessions[activeSessionId] : null;
 
+  // Utility: get the Radix ScrollArea viewport element
+  const getViewport = () =>
+    scrollWrapperRef.current?.querySelector<HTMLDivElement>(
+      "[data-radix-scroll-area-viewport]",
+    ) ?? null;
+
+  // Update isAtBottom on scroll
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    const viewport = getViewport();
+    if (!viewport) return;
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 80;
+    };
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId]);
+
+  // Smart auto-scroll
+  useEffect(() => {
+    const viewport = getViewport();
+    if (!viewport || !activeSession) return;
+
+    const msgCount = activeSession.messages.length;
+    const isNewMessage = msgCount > prevMsgCountRef.current;
+    prevMsgCountRef.current = msgCount;
+
+    if (isNewMessage) {
+      // New user/assistant message pair started — always scroll to bottom (smooth)
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+      isAtBottomRef.current = true;
+    } else if (isAtBottomRef.current) {
+      // Streaming update and user is at the bottom — follow instantly (no jank)
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "instant" });
     }
-  }, [activeSession?.messages, isGenerating]);
+    // If user scrolled up: do nothing — let them read freely
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.messages]);
 
   // Auto-resize textarea: grow up to 5 lines, then scroll
   // Also track if content exceeds 2 lines to align the send button
@@ -176,103 +215,123 @@ export function ChatArea() {
       </div>
 
       {/* Messages area */}
-      <ScrollArea className="flex-1 overflow-hidden">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6 pb-4">
-          <AnimatePresence initial={false}>
-            {activeSession.messages.map((msg, index) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 18, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{
-                  duration: 0.32,
-                  ease: [0.23, 1, 0.32, 1],
-                  delay: index === activeSession.messages.length - 1 ? 0 : 0,
-                }}
-                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {msg.role === "assistant" && (
-                  <Avatar className="w-8 h-8 rounded-lg shrink-0 mt-0.5">
-                    <AvatarFallback className="bg-primary/20 text-primary font-bold text-[10px] rounded-lg border border-primary/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]">
-                      SA
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-
-                <div
-                  className={`rounded-2xl px-4 py-3 max-w-[85%] sm:max-w-[80%] text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-zinc-800 text-zinc-100 border border-zinc-700/50 rounded-tr-sm"
-                      : "bg-zinc-900/80 text-zinc-200 border border-zinc-800/60 rounded-tl-sm prose prose-invert prose-sm prose-p:leading-relaxed prose-headings:text-primary prose-headings:font-semibold prose-a:text-primary prose-code:text-primary/80 prose-code:bg-zinc-800 prose-code:px-1 prose-code:rounded"
-                  }`}
+      <div ref={scrollWrapperRef} className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6 pb-4">
+            <AnimatePresence initial={false}>
+              {activeSession.messages.map((msg, index) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    duration: 0.32,
+                    ease: [0.23, 1, 0.32, 1],
+                    delay: index === activeSession.messages.length - 1 ? 0 : 0,
+                  }}
+                  className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {msg.role === "assistant" && !msg.content && isGenerating ? (
-                    <div className="flex items-center gap-2 py-0.5">
-                      <div className="flex gap-1">
-                        <span
-                          className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
-                          style={{ animationDelay: "0ms" }}
-                        />
-                        <span
-                          className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
-                          style={{ animationDelay: "150ms" }}
-                        />
-                        <span
-                          className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
-                          style={{ animationDelay: "300ms" }}
-                        />
-                      </div>
-                      <span className="text-xs text-zinc-500">
-                        Generating...
-                      </span>
-                    </div>
-                  ) : (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
+                  {msg.role === "assistant" && (
+                    <Avatar className="w-8 h-8 rounded-lg shrink-0 mt-0.5">
+                      <AvatarFallback className="bg-primary/20 text-primary font-bold text-[10px] rounded-lg border border-primary/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]">
+                        SA
+                      </AvatarFallback>
+                    </Avatar>
                   )}
-                </div>
 
-                {msg.role === "user" && (
-                  <Avatar className="w-8 h-8 shrink-0 mt-0.5">
-                    <AvatarFallback className="bg-zinc-700 text-zinc-300 font-semibold text-xs rounded-lg">
-                      U
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                  <div
+                    className={`rounded-2xl px-4 py-3 max-w-[85%] sm:max-w-[80%] text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-zinc-800 text-zinc-100 border border-zinc-700/50 rounded-tr-sm"
+                        : "bg-zinc-900/80 text-zinc-200 border border-zinc-800/60 rounded-tl-sm prose prose-invert prose-sm prose-p:leading-relaxed prose-headings:text-primary prose-headings:font-semibold prose-a:text-primary prose-code:text-primary/80 prose-code:bg-zinc-800 prose-code:px-1 prose-code:rounded"
+                    }`}
+                  >
+                    {msg.role === "assistant" &&
+                    !msg.content &&
+                    isGenerating ? (
+                      /* Loading dots — shown before the first chunk arrives */
+                      <div className="flex items-center gap-2 py-0.5">
+                        <div className="flex gap-1">
+                          <span
+                            className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
+                            style={{ animationDelay: "0ms" }}
+                          />
+                          <span
+                            className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
+                            style={{ animationDelay: "150ms" }}
+                          />
+                          <span
+                            className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"
+                            style={{ animationDelay: "300ms" }}
+                          />
+                        </div>
+                        <span className="text-xs text-zinc-500">
+                          Generating...
+                        </span>
+                      </div>
+                    ) : msg.role === "assistant" && msg.streamChunks?.length ? (
+                      /* Animated streaming — each chunk fades in as it arrives */
+                      <p className="whitespace-pre-wrap leading-relaxed">
+                        {msg.streamChunks.map((chunk, i) => (
+                          <motion.span
+                            key={i}
+                            initial={{ opacity: 0, y: 3, filter: "blur(3px)" }}
+                            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                            transition={{ duration: 0.18, ease: "easeOut" }}
+                          >
+                            {chunk}
+                          </motion.span>
+                        ))}
+                      </p>
+                    ) : (
+                      /* Finished / historical — full markdown render */
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
 
-          {/* Error block */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-destructive bg-destructive/10 border border-destructive/25 p-4 rounded-2xl text-sm ml-11"
-            >
-              <div className="flex flex-col gap-0.5">
-                <span className="font-semibold text-sm">
-                  Generation Interrupted
-                </span>
-                <span className="text-destructive/70 text-xs">
-                  The AI was unable to complete this request. {error}
-                </span>
-              </div>
-              <Button
-                onClick={() => retryLastMessage()}
-                disabled={isGenerating}
-                className="bg-destructive text-white hover:bg-destructive/80 border-0 h-8 px-4 text-xs font-semibold shrink-0 transition-colors"
+                  {msg.role === "user" && (
+                    <Avatar className="w-8 h-8 shrink-0 mt-0.5">
+                      <AvatarFallback className="bg-zinc-700 text-zinc-300 font-semibold text-xs rounded-lg">
+                        U
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {/* Error block */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-destructive bg-destructive/10 border border-destructive/25 p-4 rounded-2xl text-sm ml-11"
               >
-                <RefreshCcw className="w-3.5 h-3.5 mr-1.5" />
-                Retry
-              </Button>
-            </motion.div>
-          )}
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-semibold text-sm">
+                    Generation Interrupted
+                  </span>
+                  <span className="text-destructive/70 text-xs">
+                    The AI was unable to complete this request. {error}
+                  </span>
+                </div>
+                <Button
+                  onClick={() => retryLastMessage()}
+                  disabled={isGenerating}
+                  className="bg-destructive text-white hover:bg-destructive/80 border-0 h-8 px-4 text-xs font-semibold shrink-0 transition-colors"
+                >
+                  <RefreshCcw className="w-3.5 h-3.5 mr-1.5" />
+                  Retry
+                </Button>
+              </motion.div>
+            )}
 
-          <div ref={scrollRef} />
-        </div>
-      </ScrollArea>
+            <div ref={scrollAnchorRef} className="h-1" />
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* Input area */}
       <div className="shrink-0 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur-sm p-3 sm:p-4">
