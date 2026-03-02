@@ -4,7 +4,7 @@
 
 # 2. Live Demo
 
-- **Frontend (Netlify)**: [https://studioassistant.netlify.app](https://studioassistant.netlify.app)
+- **Frontend (Vercel)**: [https://gamestudioassistant.vercel.app](https://gamestudioassistant.vercel.app)
 - **Backend API (Railway)**: [https://studioassistant-production.up.railway.app](https://studioassistant-production.up.railway.app)
 
 # 3. Tech Stack
@@ -12,7 +12,7 @@
 - **Frontend**: Next.js 14 (App Router), React, Tailwind CSS, Shadcn UI, Zustand (Local Storage), Framer Motion
 - **Backend**: NestJS, TypeScript, RxJS
 - **AI Service**: OpenAI SDK (gpt-4o) using Server-Sent Events (SSE) streaming
-- **Deployment Platform**: Netlify (Frontend)
+- **Deployment Platform**: Vercel (Frontend), Railway (Backend)
 
 # 4. Time Log
 
@@ -20,7 +20,7 @@
 
 # 5. AI Tools Used
 
-- **Google Gemini (Antigravity Agent)**: Used as a pair-programming partner. Assisted in architecting the standalone folder structure, scaffolding the NestJS backend, building the Next.js frontend, styling the Cyberpunk UI with Tailwind CSS, implementing real-time SSE streaming, and diagnosing/resolving NPM dependency issues during Netlify deployment.
+- **Google Gemini (Antigravity Agent)**: Used as a pair-programming partner. Assisted in architecting the standalone folder structure, scaffolding the NestJS backend, building the Next.js frontend, styling the Cyberpunk UI with Tailwind CSS, implementing real-time SSE streaming, and diagnosing/resolving NPM dependency issues during Railway deployment.
 
 # 6. Setup Instructions
 
@@ -73,7 +73,6 @@ _The frontend application will be available at `http://localhost:3000`._
 
 If I had more time, I would implement the following:
 
-- **Full Production Backend**: Deploy the NestJS streaming backend to a long-running container host (e.g., Render, Railway, or AWS ECS). Netlify Serverless Functions naturally buffer SSE streams, breaking the real-time typing effect.
 - **Database Architecture**: Replace the local `zustand` storage with a remote Postgres database (via Prisma) to allow users to securely sync their chat histories and custom agent configurations across devices.
 - **RAG Integration**: Enhance the AI agents with Retrieval-Augmented Generation (RAG) so that the Narrative Designer and Art Director can query internal studio design documents (PDFs, Confluence pages) to generate perfectly canon-compliant, project-specific lore and assets.
 - **Streaming Granularity**: Improve the UI error boundaries to gracefully handle partial streaming network interruptions, allowing the AI to smoothly resume a chopped stream rather than just generating a full error block.
