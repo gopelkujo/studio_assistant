@@ -5,7 +5,7 @@
 # 2. Live Demo
 
 - **Frontend (Netlify)**: [https://studioassistant.netlify.app](https://studioassistant.netlify.app)
-- **Backend API**: Currently configured for local runtime (`http://localhost:3001`), as the NestJS streaming SSE implementation requires a long-running Node host (like Render or Railway) rather than a serverless environment.
+- **Backend API (Railway)**: [https://studioassistant-production.up.railway.app](https://studioassistant-production.up.railway.app)
 
 # 3. Tech Stack
 
