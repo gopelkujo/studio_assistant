@@ -24,7 +24,9 @@ import {
   Sparkles,
   Copy,
   Check,
+  FileDown,
 } from "lucide-react";
+import { exportSessionToPDF } from "@/lib/exportToPDF";
 
 const COMMANDS = [
   {
@@ -98,6 +100,7 @@ export function ChatArea() {
   const [input, setInput] = useState("");
   const [isMultiline, setIsMultiline] = useState(false);
   const [copiedMap, setCopiedMap] = useState<Record<string, boolean>>({});
+  const [isExporting, setIsExporting] = useState(false);
 
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const scrollWrapperRef = useRef<HTMLDivElement>(null);
@@ -241,7 +244,7 @@ export function ChatArea() {
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden">
       {/* Chat header */}
-      <div className="shrink-0 h-14 border-b border-zinc-800/80 flex items-center px-4 sm:px-6 bg-zinc-950/80 backdrop-blur-sm">
+      <div className="shrink-0 h-14 border-b border-zinc-800/80 flex items-center justify-between px-4 sm:px-6 bg-zinc-950/80 backdrop-blur-sm">
         <div className="min-w-0">
           <h1 className="font-semibold text-zinc-200 text-sm sm:text-base truncate">
             {activeSession.title}
@@ -251,6 +254,36 @@ export function ChatArea() {
             {activeSession.messages.length !== 1 ? "s" : ""}
           </p>
         </div>
+
+        {/* Export PDF button */}
+        {activeSession.messages.length > 0 && (
+          <button
+            onClick={async () => {
+              setIsExporting(true);
+              // small delay so state can re-render
+              await new Promise((r) => setTimeout(r, 50));
+              exportSessionToPDF(activeSession);
+              setTimeout(() => setIsExporting(false), 1500);
+            }}
+            disabled={isExporting}
+            className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-all duration-200 ${
+              isExporting
+                ? "text-green-400 bg-green-400/10 border-green-400/25"
+                : "text-zinc-400 hover:text-zinc-100 bg-zinc-800/60 border-zinc-700/50 hover:bg-zinc-700/60 hover:border-zinc-600"
+            }`}
+            aria-label="Export conversation as PDF"
+          >
+            {isExporting ? (
+              <>
+                <Check className="w-3.5 h-3.5" /> Exported!
+              </>
+            ) : (
+              <>
+                <FileDown className="w-3.5 h-3.5" /> Export PDF
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Messages area */}
