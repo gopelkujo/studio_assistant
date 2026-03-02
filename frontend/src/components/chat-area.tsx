@@ -22,6 +22,8 @@ import {
   Swords,
   Mail,
   Sparkles,
+  Copy,
+  Check,
 } from "lucide-react";
 
 const COMMANDS = [
@@ -64,12 +66,38 @@ const COMMANDS = [
   },
 ] as const;
 
+// Strip markdown syntax to produce clean plain text for clipboard
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/```[\s\S]*?```/g, (match) =>
+      match.replace(/```(?:\w+)?\n?/g, "").trim(),
+    ) // fenced code blocks (keep content)
+    .replace(/`([^`]+)`/g, "$1") // inline code
+    .replace(/^#{1,6}\s+/gm, "") // headings
+    .replace(/\*\*\*(.+?)\*\*\*/g, "$1") // bold+italic
+    .replace(/\*\*(.+?)\*\*/g, "$1") // bold
+    .replace(/\*(.+?)\*/g, "$1") // italic
+    .replace(/___(.+?)___/g, "$1") // bold+italic underscore
+    .replace(/__(.+?)__/g, "$1") // bold underscore
+    .replace(/_(.+?)_/g, "$1") // italic underscore
+    .replace(/~~(.+?)~~/g, "$1") // strikethrough
+    .replace(/^>+\s?/gm, "") // blockquotes
+    .replace(/^[-*+]\s+/gm, "• ") // unordered list bullets → •
+    .replace(/^\d+\.\s+/gm, "") // ordered list numbers
+    .replace(/!\[.*?\]\(.*?\)/g, "") // images
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → link text only
+    .replace(/^[-*_]{3,}$/gm, "──────") // horizontal rules → dash line
+    .replace(/\n{3,}/g, "\n\n") // collapse excess blank lines
+    .trim();
+}
+
 export function ChatArea() {
   const { activeSessionId, sessions } = useSessionStore();
   const { sendMessage, retryLastMessage, isGenerating, error } =
     useChatStream();
   const [input, setInput] = useState("");
   const [isMultiline, setIsMultiline] = useState(false);
+  const [copiedMap, setCopiedMap] = useState<Record<string, boolean>>({});
 
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const scrollWrapperRef = useRef<HTMLDivElement>(null);
@@ -152,6 +180,17 @@ export function ChatArea() {
     textareaRef.current?.focus();
   };
 
+  const handleCopy = (id: string, text: string) => {
+    if (!text) return;
+    const plain = stripMarkdown(text);
+    navigator.clipboard.writeText(plain).then(() => {
+      setCopiedMap((prev) => ({ ...prev, [id]: true }));
+      setTimeout(() => {
+        setCopiedMap((prev) => ({ ...prev, [id]: false }));
+      }, 2000);
+    });
+  };
+
   if (!activeSession) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 text-zinc-400 h-full w-full px-6 py-12">
@@ -229,7 +268,7 @@ export function ChatArea() {
                     ease: [0.23, 1, 0.32, 1],
                     delay: index === activeSession.messages.length - 1 ? 0 : 0,
                   }}
-                  className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`group/msg flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {msg.role === "assistant" && (
                     <Avatar className="w-8 h-8 rounded-lg shrink-0 mt-0.5">
@@ -288,6 +327,33 @@ export function ChatArea() {
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {msg.content}
                       </ReactMarkdown>
+                    )}
+
+                    {/* Copy button — hidden during streaming */}
+                    {!msg.streamChunks?.length && msg.content && (
+                      <div
+                        className={`flex mt-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <button
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] transition-all duration-150 opacity-0 group-hover/msg:opacity-100 ${
+                            copiedMap[msg.id]
+                              ? "text-green-400 bg-green-400/10 border border-green-400/20"
+                              : "text-zinc-600 hover:text-zinc-300 bg-zinc-800/60 border border-zinc-700/40 hover:border-zinc-600"
+                          }`}
+                          aria-label="Copy message"
+                        >
+                          {copiedMap[msg.id] ? (
+                            <>
+                              <Check className="w-2.5 h-2.5" /> Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-2.5 h-2.5" /> Copy
+                            </>
+                          )}
+                        </button>
+                      </div>
                     )}
                   </div>
 
