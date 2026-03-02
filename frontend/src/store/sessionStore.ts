@@ -1,9 +1,9 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: number;
 }
@@ -21,7 +21,12 @@ interface SessionState {
   createSession: (title?: string) => string;
   setActiveSession: (id: string) => void;
   addMessage: (sessionId: string, message: Message) => void;
-  updateMessageContent: (sessionId: string, messageId: string, chunk: string) => void;
+  updateMessageContent: (
+    sessionId: string,
+    messageId: string,
+    chunk: string,
+  ) => void;
+  setSessionTitle: (id: string, title: string) => void;
   deleteSession: (id: string) => void;
 }
 
@@ -33,7 +38,7 @@ export const useSessionStore = create<SessionState>()(
       sessions: {},
       activeSessionId: null,
 
-      createSession: (title = 'New Assistant Session') => {
+      createSession: (title = "New Assistant Session") => {
         const id = generateId();
         const newSession: Session = {
           id,
@@ -96,18 +101,36 @@ export const useSessionStore = create<SessionState>()(
           };
         }),
 
+      setSessionTitle: (id, title) =>
+        set((state) => {
+          const session = state.sessions[id];
+          if (!session) return state;
+
+          return {
+            sessions: {
+              ...state.sessions,
+              [id]: {
+                ...session,
+                title,
+                updatedAt: Date.now(),
+              },
+            },
+          };
+        }),
+
       deleteSession: (id) =>
         set((state) => {
           const newSessions = { ...state.sessions };
           delete newSessions[id];
           return {
             sessions: newSessions,
-            activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
+            activeSessionId:
+              state.activeSessionId === id ? null : state.activeSessionId,
           };
         }),
     }),
     {
-      name: 'studio-assistant-sessions',
-    }
-  )
+      name: "studio-assistant-sessions",
+    },
+  ),
 );

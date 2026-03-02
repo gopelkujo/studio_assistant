@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, Loader2, Wand2, Box } from "lucide-react";
+import { Send, Loader2, Wand2, Box, RefreshCcw } from "lucide-react";
 
 export function ChatArea() {
   const { activeSessionId, sessions } = useSessionStore();
-  const { sendMessage, isGenerating, error } = useChatStream();
+  const { sendMessage, retryLastMessage, isGenerating, error } =
+    useChatStream();
   const [input, setInput] = useState("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -101,9 +102,22 @@ export function ChatArea() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-red-400 bg-red-950/30 border border-red-900/50 p-3 rounded-md text-sm"
+              className="flex items-center justify-between text-destructive bg-destructive/10 border border-destructive/20 p-4 rounded-xl text-sm max-w-[85%] mr-auto ml-14"
             >
-              Error: {error}
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold">Generation Interrupted</span>
+                <span className="text-destructive/80 text-xs">
+                  The AI was unable to complete this request. ({error})
+                </span>
+              </div>
+              <Button
+                onClick={() => retryLastMessage()}
+                disabled={isGenerating}
+                className="bg-destructive text-white hover:bg-destructive/90 border-0 ml-4 h-8 px-4 font-medium transition-colors"
+              >
+                <RefreshCcw className="w-3.5 h-3.5 mr-2" />
+                Retry Prompt
+              </Button>
             </motion.div>
           )}
           <div ref={scrollRef} />

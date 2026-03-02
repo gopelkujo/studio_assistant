@@ -1,14 +1,20 @@
-import { useState } from 'react';
-import { useSessionStore } from '../store/sessionStore';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { useState } from "react";
+import { useSessionStore } from "../store/sessionStore";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 export function useChatStream() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
+  const activeSession = useSessionStore((state) =>
+    state.activeSessionId ? state.sessions[state.activeSessionId] : null,
+  );
   const addMessage = useSessionStore((state) => state.addMessage);
-  const updateMessageContent = useSessionStore((state) => state.updateMessageContent);
+  const updateMessageContent = useSessionStore(
+    (state) => state.updateMessageContent,
+  );
+  const setSessionTitle = useSessionStore((state) => state.setSessionTitle);
 
   const sendMessage = async (prompt: string) => {
     if (!activeSessionId) return;
@@ -20,39 +26,48 @@ export function useChatStream() {
     const userMessageId = Math.random().toString(36).substring(2, 9);
     addMessage(activeSessionId, {
       id: userMessageId,
-      role: 'user',
+      role: "user",
       content: prompt,
       timestamp: Date.now(),
     });
 
     // 2. Determine Command Type (Naive Parser)
-    let commandType: 'narrative' | 'asset-brief' = 'narrative';
+    let commandType: "narrative" | "asset-brief" = "narrative";
     let cleanPrompt = prompt;
 
-    if (prompt.startsWith('/narrative')) {
-      commandType = 'narrative';
-      cleanPrompt = prompt.replace('/narrative', '').trim();
-    } else if (prompt.startsWith('/asset-brief')) {
-      commandType = 'asset-brief';
-      cleanPrompt = prompt.replace('/asset-brief', '').trim();
+    if (prompt.startsWith("/narrative")) {
+      commandType = "narrative";
+      cleanPrompt = prompt.replace("/narrative", "").trim();
+    } else if (prompt.startsWith("/asset-brief")) {
+      commandType = "asset-brief";
+      cleanPrompt = prompt.replace("/asset-brief", "").trim();
     }
 
-    // 3. Prepare AI Message Placeholder
+    // 3. Update Title dynamically if it's the first message
+    if (activeSession && activeSession.messages.length === 0) {
+      const newTitle =
+        cleanPrompt.length > 25
+          ? `${cleanPrompt.substring(0, 25)}...`
+          : cleanPrompt;
+      setSessionTitle(activeSessionId, newTitle || "Untitled Chat");
+    }
+
+    // 4. Prepare AI Message Placeholder
     const assistantMessageId = Math.random().toString(36).substring(2, 9);
     addMessage(activeSessionId, {
       id: assistantMessageId,
-      role: 'assistant',
-      content: '', // Will be streamed into
+      role: "assistant",
+      content: "", // Will be streamed into
       timestamp: Date.now(),
     });
 
-    // 4. Connect via SSE
+    // 5. Connect via SSE
     try {
-      await fetchEventSource('http://localhost:3001/ai/generate', {
-        method: 'POST',
+      await fetchEventSource("http://localhost:3001/ai/generate", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
         body: JSON.stringify({
           prompt: cleanPrompt,
@@ -61,50 +76,84 @@ export function useChatStream() {
         onopen(res) {
           if (res.ok && res.status === 200) {
             return Promise.resolve();
-          } else if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-            throw new Error('Client request error.');
+          } else if (
+            res.status >= 400 &&
+            res.status < 500 &&
+            res.status !== 429
+          ) {
+            throw new Error("Client request error.");
           } else {
-            console.warn('SSE Error HTTP Status:', res.status);
+            console.warn("SSE Error HTTP Status:", res.status);
             return Promise.resolve();
           }
         },
         onmessage(msg) {
-          if (msg.event === 'error') {
-            const errorData = JSON.parse(msg.data);
-            throw new Error(errorData.message || 'Stream error');
+          if (msg.event === "error") {
+            let errorData;
+            try {
+              errorData = JSON.parse(msg.data);
+            } catch {
+              throw new Error(msg.data || "Stream error");
+            }
+            throw new Error(errorData.message || "Stream error");
           }
-          
+
+          if (!msg.data || msg.data === "[DONE]") {
+            return;
+          }
+
           try {
             const payload = JSON.parse(msg.data);
             if (payload.chunk) {
-              updateMessageContent(activeSessionId, assistantMessageId, payload.chunk);
+              updateMessageContent(
+                activeSessionId,
+                assistantMessageId,
+                payload.chunk,
+              );
             }
           } catch {
-            console.error('Failed to parse SSE chunk:', msg.data);
+            console.error("Failed to parse SSE chunk:", msg.data);
           }
         },
         onclose() {
           setIsGenerating(false);
         },
         onerror(err) {
-          console.error('SSE connection error:', err);
-          setError(err.message || 'Failed to connect to AI server');
+          console.error("SSE connection error:", err);
+          setError(err.message || "Failed to connect to AI server");
           setIsGenerating(false);
           throw err; // Stop retrying on critical failure
         },
       });
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message || 'An error occurred during generation.');
+        setError(err.message || "An error occurred during generation.");
       } else {
-        setError('An error occurred during generation.');
+        setError("An error occurred during generation.");
       }
       setIsGenerating(false);
     }
   };
 
+  const retryLastMessage = () => {
+    if (!activeSession) return;
+
+    // Find the last user message
+    const lastUserMessage = [...activeSession.messages]
+      .reverse()
+      .find((msg) => msg.role === "user");
+    if (lastUserMessage) {
+      setError(null);
+      // Optional UI polish: We could remove the failed assistant message from the store here,
+      // but the simplest rock-solid approach is just re-sending the same text as a new prompt to kick off the flow again.
+      // Easiest approach for now is appending a new generation attempt.
+      sendMessage(lastUserMessage.content);
+    }
+  };
+
   return {
     sendMessage,
+    retryLastMessage,
     isGenerating,
     error,
   };
